@@ -15,7 +15,9 @@ import "./App.css";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-const API_URL = "http://127.0.0.1:8000/chat";
+const API_URL = `${import.meta.env.VITE_API_URL}/chat`;
+
+const UPLOAD_URL = `${import.meta.env.VITE_API_URL}/upload-resume`;
 
 function createChat() {
   return {
@@ -230,22 +232,34 @@ const uploadResume = async (file) => {
     formData.append("file", file);
 
     const response = await fetch(
-      "http://127.0.0.1:8000/upload-resume",
+      UPLOAD_URL,
       {
         method: "POST",
         body: formData,
       }
     );
 
-    const data = await response.json();
+    const responseText = await response.text();
 
-    if (!response.ok) {
-      throw new Error(data.detail || "Upload failed");
-    }
+let data = {};
 
-    setSessionId(data.session_id);
-    setResumeName(file.name);
-    setCandidateName(data.candidate_name || "your");
+try {
+  data = responseText ? JSON.parse(responseText) : {};
+} catch {
+  throw new Error(
+    `Invalid server response. Status: ${response.status}. Check backend URL.`
+  );
+}
+
+if (!response.ok) {
+  throw new Error(
+    data.detail || data.message || `Upload failed: ${response.status}`
+  );
+}
+
+setSessionId(data.session_id);
+setResumeName(file.name);
+setCandidateName(data.candidate_name || "");
 
     alert("Resume uploaded successfully!");
 
